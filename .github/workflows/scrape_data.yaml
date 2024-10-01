@@ -20,6 +20,5 @@ jobs:
         run: |
           python scrape.py
       - name: Commit and push changes
-        run: |
-          uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v5
 
