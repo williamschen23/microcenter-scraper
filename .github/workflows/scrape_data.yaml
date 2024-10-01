@@ -14,6 +14,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
+      - name: Grab the current time
+        run: echo "COMMIT_MSG=$(date -u)" >> $GITHUB_ENV
       - name: Setup python
         uses: actions/setup-python@v4
         with:
@@ -27,5 +29,5 @@ jobs:
       - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "$(date -u)"
+          commit_message: "${{ env.COMMIT_MSG }}"
 
