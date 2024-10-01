@@ -15,7 +15,7 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
       - name: Grab the current time
-        run: echo "COMMIT_MSG=$(date -u)" >> $GITHUB_ENV
+        run: echo "COMMIT_MSG=$(TZ=":America/New_York" date)" >> $GITHUB_ENV
       - name: Setup python
         uses: actions/setup-python@v4
         with:
