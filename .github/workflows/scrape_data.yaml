@@ -7,10 +7,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      with:
-        ref: ${{ github.head_ref }}
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
       - name: Setup python
         uses: actions/setup-python@v4
         with:
