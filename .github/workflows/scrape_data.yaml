@@ -1,5 +1,5 @@
 name: Scape Data
-run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
+run-name: Scraping Microcenter Data
 on: [push]
 jobs:
   Explore-GitHub-Actions:
@@ -16,7 +16,7 @@ jobs:
           pip install -r requirements.txt
       - name: Run the scraper
         run: |
-          python scape.py
+          python scrape.py
           git config user.email github-actions@github.com
           git add .
           git commit -m "$(date -u)"
