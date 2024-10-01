@@ -2,7 +2,7 @@ name: Scape Data
 run-name: Scraping Microcenter Data
 on: [push]
 jobs:
-  Explore-GitHub-Actions:
+  Scrape Data:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
