@@ -4,6 +4,8 @@ on: [push]
 jobs:
   Scrape Data:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -17,8 +19,7 @@ jobs:
       - name: Run the scraper
         run: |
           python scrape.py
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git add .
-          git commit -m "$(date -u)"
-          git push
+      - name: Commit and push changes
+        run: |
+          uses: stefanzweifel/git-auto-commit-action@v4
+
