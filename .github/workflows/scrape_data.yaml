@@ -16,7 +16,7 @@ jobs:
           pip install -r requirements.txt
       - name: Run the scraper
         run: |
-          python microcenter_scraper.py
+          python scape.py
           git config user.email github-actions@github.com
           git add .
           git commit -m "$(date -u)"
