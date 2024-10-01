@@ -3,6 +3,7 @@ run-name: Scraping Microcenter Data
 on:
   schedule:
     - cron: '0 */4 * * *'
+  workflow_dispatch:
 jobs:
   Scrape-Data:
     runs-on: ubuntu-latest
