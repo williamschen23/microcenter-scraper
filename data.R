@@ -1,25 +1,22 @@
 library(tidyverse)
 dat <- read.csv('data.csv')
 
-dat <- dat %>% filter(Name == "AMD Ryzen™ 7 7700X, Gigabyte B650 Gaming X AX v2, 32GB DDR5")
-dat$Discounted.Price = as.numeric(gsub("\\$", "", dat$Discounted.Price))
-ggplot(data=dat, aes(x=Time, y=Discounted.Price)) +
-  geom_point() + 
-  theme_classic()
-
-unique(dat$Name)
-
-for(x in unique(dat$Name)){
-  tempdat <- dat %>% filter(Name == x)
+plotItem <- function(data, name){
+  tempdat <- data %>% filter(Name == name)
   tempdat$Discounted.Price = as.numeric(gsub("\\$", "", tempdat$Discounted.Price))
-  
-  print(ggplot(data=tempdat, aes(x=Time, y=Discounted.Price)) +
-    geom_point() + 
-    theme_classic() + 
-    ggtitle(Name))
-  break;
+  tempdat$Time = as.Date(tempdat$Time, "%Y-%m-%d")
+  tempdat_clean <- na.omit(tempdat)
+  print(ggplot(data=tempdat_clean, aes(x=Time, y=Discounted.Price)) +
+          geom_point() + 
+          theme_classic() + 
+          ggtitle(name))
+}
+
+# plotItem(dat,"AMD Ryzen™ 7 7700X, Gigabyte B650 Gaming X AX v2, 32GB DDR5")
+
+
+for(item in unique(dat$Name)){
+  plotItem(dat, item)
 }
 
 str(dat)
-plot(dat$Time, dat$Discounted.Price)
-
