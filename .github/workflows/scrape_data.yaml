@@ -1,33 +1,33 @@
-# name: Scape Data
-# run-name: Scraping Microcenter Data
-# on:
-#   schedule:
-#     - cron: '0 */24 * * *'
-#   workflow_dispatch:
-# jobs:
-#   Scrape-Data:
-#     runs-on: ubuntu-latest
-#     permissions:
-#       contents: write
-#     steps:
-#       - name: Check out repository
-#         uses: actions/checkout@v4
-#         with:
-#           ref: ${{ github.head_ref }}
-#       - name: Grab the current time
-#         run: echo "COMMIT_MSG=$(TZ=":America/New_York" date)" >> $GITHUB_ENV
-#       - name: Setup python
-#         uses: actions/setup-python@v4
-#         with:
-#           python-version: '3.12'
-#       - name: Install dependencies
-#         run: |
-#           pip install -r requirements.txt
-#       - name: Run the scraper
-#         run: |
-#           python scrape.py
-#       - name: Commit and push changes
-#         uses: stefanzweifel/git-auto-commit-action@v5
-#         with:
-#           commit_message: "${{ env.COMMIT_MSG }}"
+name: Scape Data
+run-name: Scraping Microcenter Data
+on:
+  schedule:
+    - cron: '0 */24 * * *'
+  workflow_dispatch:
+jobs:
+  Scrape-Data:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - name: Grab the current time
+        run: echo "COMMIT_MSG=$(TZ=":America/New_York" date)" >> $GITHUB_ENV
+      - name: Setup python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      - name: Run the scraper
+        run: |
+          python scrape.py
+      - name: Commit and push changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "${{ env.COMMIT_MSG }}"
 
