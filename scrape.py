@@ -1,10 +1,11 @@
-import requests
-from bs4 import BeautifulSoup
-import re
 import csv
-from datetime import datetime
-import pytz
 import os
+import pytz
+import requests
+import re
+import pandas as pd
+from datetime import datetime
+from bs4 import BeautifulSoup
 
 class bcolors:
     HEADER = '\033[95m'
@@ -26,8 +27,61 @@ def write_csv(data, filename='data.csv'):
         writer = csv.writer(f)
         if file_is_empty:
             print(f'{bcolors.OKGREEN}Writing headers{bcolors.ENDC}')
-            writer.writerow(['Time', 'Category', 'Name', 'Part ID', 'Link', 'Full Price', 'Discounted Price', 'Saved Price'])
+            writer.writerow(['Time', 'Category', 'Name', 'Part_ID', 'Link', 'Full_Price', 'Discounted_Price', 'Saved_Price'])
         writer.writerows(data)
+
+def write_csv_bundles(data, filename='bundles_data.csv'):
+    file_is_empty = not os.path.exists(filename) or os.path.getsize(filename) == 0
+    with open(filename, 'a', newline='') as f:
+        writer = csv.writer(f)
+        if file_is_empty:
+            print(f'{bcolors.OKGREEN}Writing headers{bcolors.ENDC}')
+            writer.writerow(['Time', 'Category', 'Name', 'Link', 'Full_Price', 'Discounted_Price', 'Saved_Price'])
+        writer.writerows(data)
+
+def write_hdf5_bundles(data):
+    columns = ['Time', 'Category', 'Name', 'Link', 'Full_Price', 'Discounted_Price', 'Saved_Price']
+    df = pd.DataFrame(data, columns=columns)
+    df['Time'] = df['Time'].astype('S36')
+    df['Full_Price'] = df['Full_Price'].astype('float16')
+    df['Discounted_Price'] = df['Discounted_Price'].astype('float16')
+    df['Saved_Price'] = df['Saved_Price'].astype('float16')
+
+    with pd.HDFStore('data.h5', mode='a', complevel=9, complib='zlib') as hdf:
+        for name, group in df.groupby('Name'):
+            # get and filter stuff
+            subgroup = group[['Time', 'Full_Price', 'Discounted_Price', 'Saved_Price']]
+            name = re.sub(r'[^a-zA-Z0-9_]', '_', name)
+            link = group['Link'].iloc[0]
+            
+            hdf.append(f'Bundle/{name}', subgroup, format='table', data_columns=True, index=False)
+            hdf.get_storer(f'Bundle/{name}').attrs.link = link
+
+def write_hdf5(data):
+    columns = ['Time', 'Category', 'Name', 'Part_ID', 'Link', 'Full_Price', 'Discounted_Price', 'Saved_Price']
+    df = pd.DataFrame(data, columns=columns)
+    df['Time'] = df['Time'].astype('S36')
+    df['Full_Price'] = df['Full_Price'].astype('float16')
+    df['Discounted_Price'] = df['Discounted_Price'].astype('float16')
+    df['Saved_Price'] = df['Saved_Price'].astype('float16')
+
+    with pd.HDFStore('data.h5', mode='a', complevel=9, complib='zlib') as hdf:
+        for name, group in df.groupby('Name'):
+            # get stuff
+            part = str(group['Part_ID'].iloc[0])
+            subgroup = group[['Time', 'Full_Price', 'Discounted_Price', 'Saved_Price']]
+            category = group['Category'].iloc[0]
+            link = group['Link'].iloc[0]
+            
+            # filter
+            part = re.sub(r'[^a-zA-Z0-9_]', '_', part)
+            name = re.sub(r'[^a-zA-Z0-9_]', '_', name)
+            category = re.sub(r'[^a-zA-Z0-9_]', '_', category)
+            
+            # append stuff
+            hdf.append(f'{category}/{name}', subgroup, format='table', data_columns=True, index=False)
+            hdf.get_storer(f"{category}/{name}").attrs.part_id = part
+            hdf.get_storer(f"{category}/{name}").attrs.link = link
 
 def regex_search(text):
     match = price_pattern.search(text)
@@ -54,29 +108,33 @@ def scrape_bundles(bundle_links):
     for bundle_link in bundle_links:
         try:
             doc = fetch_html(bundle_link)
+            curr_time = current_time()
             if not doc:
                 continue
-
-            bundles = doc.find_all('div', id=lambda x: x and x.startswith('BUNDLES'))
+            
+            bundles = doc.find_all('div', class_='two') + doc.find_all('div', class_='four')
             print(f'{bcolors.OKGREEN}Found {len(bundles)} bundles at {bundle_link}{bcolors.ENDC}')
 
-            for div in bundles:
-                next_div = div.find_all('div', recursive=False)
-                for _, name in zip(*[iter(next_div)] * 2):
-                    link = 'https://microcenter.com' + name.find('a').get('href')
-                    full_name = name.find('h3').text
-                    parts = [item.strip() for item in full_name.split('\n') if item.strip() and 'Combo' not in item]
-                    part_print = ', '.join(parts)
-                    full_price = regex_search(name.find('span').text)
-                    price = regex_search(name.find('div', class_='price').text)
-                    saved_price = '${:.2f}'.format(float(full_price[1:].replace(',', '')) - float(price[1:].replace(',', '')))
+            for bundle in bundles:
+                # filtering the empty spots
+                if(bundle.text == ''):
+                    continue
 
-                    all_data.append([current_time(), 'Bundle', part_print, 'N/A', link, full_price, price, saved_price])
+                # filter price
+                temp = bundle.find('div', class_='savings').text.split('\n')[0]
+                full_price = float(temp[temp.index('$')+1:].replace(',', ''))
+                curr_price = float(bundle.find('div', class_='price').text[1:].replace(',', ''))
+                discounted = float('{:2f}'.format(full_price - curr_price))
+
+                name = bundle.find('h3', class_='B').text.replace('\r\n', ',').replace('\n', ',').replace(u'\u2122', '')
+                link = 'https://microcenter.com' + bundle.find('a').get('href')
+
+                all_data.append([curr_time, 'Bundle', name, link, full_price, curr_price, discounted])
 
         except Exception as e:
             print(f"{bcolors.FAIL}An error occurred: {e}{bcolors.ENDC}")
     
-    write_csv(all_data)
+    return all_data
 
 def scrape_anything_else(links):
     all_data = []
@@ -86,6 +144,7 @@ def scrape_anything_else(links):
         while True:
             url = get_link(link, page)
             doc = fetch_html(url)
+            curr_time = current_time()
             if not doc:
                 break
 
@@ -96,29 +155,36 @@ def scrape_anything_else(links):
             print(f'{bcolors.OKGREEN}Found {len(products)} items at {url}{bcolors.ENDC}')
 
             for product in products:
-                product_id = product.find('p', class_='sku').text
-                description = product.find('div', class_='pDescription')
-                data = description.find('a')
-                data_link = 'https://microcenter.com' + data.get('href')
+                # product id
+                temp_text = product.find('p', class_='sku').text
+                product_id = int(temp_text[temp_text.index(' ')+1:])
+                
+                # link, name, category
+                data = product.find('div', class_='pDescription').find('a')
+                product_link = 'https://microcenter.com' + data.get('href')
                 name = data.text
                 category = data['data-category']
                 
+                # prices
                 price_tag = product.find('span', itemprop='price')
-                full_price_element = product.find('div', class_='standardDiscount')
-
                 if price_tag:
-                    price = regex_search(price_tag.text)
-                    full_price = regex_search(full_price_element.find('strike').text) if full_price_element else price
-                    saved_price = '${:.2f}'.format(float(full_price[1:].replace(',', '')) - float(price[1:].replace(',', '')))
+                    full_price_element = product.find('div', class_='standardDiscount')
+                    price = float(price_tag.text[price_tag.text.index('$')+1:].replace(',', ''))
+                    if full_price_element:
+                        temp = full_price_element.find('strike').text
+                        full_price = float(temp[temp.index('$')+1:].replace(',', ''))
+                    else:
+                        full_price = price
+                    discounted = float('{:.2f}'.format(full_price-price))
                 else:
-                    price = full_price = saved_price = 'N/A'
+                    price = full_price = discounted = -1
 
                 
-                all_data.append([current_time(), category, name, product_id, data_link, full_price, price, saved_price])
+                all_data.append([curr_time, category, name, product_id, product_link, full_price, price, discounted])
 
             page += 1
         
-    write_csv(all_data)
+    return all_data
 
 if __name__ == '__main__':
     bundle_links = ['https://www.microcenter.com/site/content/bundle-and-save.aspx', 'https://www.microcenter.com/site/content/intel-bundle-and-save.aspx']
@@ -145,13 +211,20 @@ if __name__ == '__main__':
     # 0 is monitors
     monitors = ['4294966896+4294806820+591']
 
+    bundle_data = []
+    bundle_data += scrape_bundles(bundle_links)
     
-    scrape_bundles(bundle_links)
-    scrape_anything_else(processors)
-    scrape_anything_else(motherboards)
-    scrape_anything_else(gpu)
-    scrape_anything_else(ram)
-    scrape_anything_else(storage)
-    scrape_anything_else(cases)
-    scrape_anything_else(power_supply)
-    scrape_anything_else(monitors)
+    parts_data = []
+    parts_data += scrape_anything_else(processors)
+    parts_data += scrape_anything_else(motherboards)
+    parts_data += scrape_anything_else(gpu)
+    parts_data += scrape_anything_else(ram)
+    parts_data += scrape_anything_else(storage)
+    parts_data += scrape_anything_else(cases)
+    parts_data += scrape_anything_else(power_supply)
+    parts_data += scrape_anything_else(monitors)
+
+    write_csv_bundles(bundle_data)
+    write_csv(parts_data)
+    write_hdf5_bundles(bundle_data)
+    write_hdf5(parts_data)
