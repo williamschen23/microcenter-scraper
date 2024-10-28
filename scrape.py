@@ -83,10 +83,6 @@ def write_hdf5(data):
             hdf.get_storer(f"{category}/{name}").attrs.part_id = part
             hdf.get_storer(f"{category}/{name}").attrs.link = link
 
-def regex_search(text):
-    match = price_pattern.search(text)
-    return match.group() if match else 'N/A'
-
 def get_link(page, page_number=1):
     return f'https://www.microcenter.com/search/search_results.aspx?Ntk=all&sortby=match&N={page}&myStore=false&rpp=96&storeID=145&sortby=pricelow&page={page_number}'
 
@@ -106,7 +102,7 @@ def scrape_bundles(bundle_links):
     all_data = []
 
     for bundle_link in bundle_links:
-        # try:
+        try:
             doc = fetch_html(bundle_link)
             curr_time = current_time()
             if not doc:
@@ -134,8 +130,8 @@ def scrape_bundles(bundle_links):
 
                 all_data.append([curr_time, 'Bundle', name, link, full_price, curr_price, discounted])
 
-        # except Exception as e:
-            # print(f"{bcolors.FAIL}An error occurred: {e}{bcolors.ENDC}")
+        except Exception as e:
+            print(f"{bcolors.FAIL}An error occurred: {e}{bcolors.ENDC}")
     
     return all_data
 
@@ -180,7 +176,7 @@ def scrape_anything_else(links):
                         full_price = price
                     discounted = float('{:.2f}'.format(full_price-price))
                 else:
-                    price = full_price = discounted = -1
+                    continue
 
                 
                 all_data.append([curr_time, category, name, product_id, product_link, full_price, price, discounted])
