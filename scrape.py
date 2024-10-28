@@ -106,13 +106,13 @@ def scrape_bundles(bundle_links):
     all_data = []
 
     for bundle_link in bundle_links:
-        try:
+        # try:
             doc = fetch_html(bundle_link)
             curr_time = current_time()
             if not doc:
                 continue
             
-            bundles = doc.find_all('div', class_='two') + doc.find_all('div', class_='four')
+            bundles = doc.find_all('div', class_='two') + doc.find_all('div', class_='four') + doc.find_all('div', id='Base') + doc.find_all('div', id='Upgrade')
             print(f'{bcolors.OKGREEN}Found {len(bundles)} bundles at {bundle_link}{bcolors.ENDC}')
 
             for bundle in bundles:
@@ -121,18 +121,21 @@ def scrape_bundles(bundle_links):
                     continue
 
                 # filter price
-                temp = bundle.find('div', class_='savings').text.split('\n')[0]
-                full_price = float(temp[temp.index('$')+1:].replace(',', ''))
-                curr_price = float(bundle.find('div', class_='price').text[1:].replace(',', ''))
+                if bundle.find('div', class_='savings'):
+                    temp = bundle.find('div', class_='savings').text.split('\n')[0]
+                    full_price = float(temp[temp.index('$')+1:].replace(',', ''))
+                    curr_price = float(bundle.find('div', class_='price').text[1:].replace(',', ''))
+                else:
+                    full_price = curr_price = float(bundle.find('div', class_='price').text[1:].replace(',', ''))
                 discounted = float('{:2f}'.format(full_price - curr_price))
 
-                name = bundle.find('h3', class_='B').text.replace('\r\n', ',').replace('\n', ',').replace(u'\u2122', '')
+                name = bundle.find(class_='B').text.replace('\r\n', ',').replace('\n', ',').replace(u'\u2122', '')
                 link = 'https://microcenter.com' + bundle.find('a').get('href')
 
                 all_data.append([curr_time, 'Bundle', name, link, full_price, curr_price, discounted])
 
-        except Exception as e:
-            print(f"{bcolors.FAIL}An error occurred: {e}{bcolors.ENDC}")
+        # except Exception as e:
+            # print(f"{bcolors.FAIL}An error occurred: {e}{bcolors.ENDC}")
     
     return all_data
 
